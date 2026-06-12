@@ -171,7 +171,7 @@ Files live on a bind-mounted volume `./data/testcases/` (host) ↔ `/data/testca
 
 ### Roles
 
-`Role` ∈ `admin | setter | member`. Enforce via `deps.require_admin` / `deps.require_setter`. New signups are `UserStatus.pending` and rejected by `current_user` until approved. Approvals go through `routers/admin.py` and write to `AuditLog`.
+`Role` ∈ `admin | setter | member`. Enforce via `deps.require_admin` / `deps.require_setter`. New signups are `UserStatus.pending`. Pending users may **browse** (read endpoints use `deps.current_user_not_banned`; frontend gate `guard.ts::requireUser`) but every write — submit, contest register/start — keeps the approved-only `current_user` gate. Banned users are blocked everywhere. Approvals go through `routers/admin.py` and write to `AuditLog`.
 
 ### Profiles + the username gate
 
