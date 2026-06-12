@@ -6,6 +6,7 @@ import Resend from "next-auth/providers/resend";
 import Credentials from "next-auth/providers/credentials";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/db/client";
+import { users, accounts, verificationTokens } from "@/db/schema";
 import { apiUpsertUser } from "@/lib/api";
 
 export const DEV_LOGIN_ENABLED = process.env.ENABLE_DEV_LOGIN === "true";
@@ -34,7 +35,13 @@ if (DEV_LOGIN_ENABLED) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db),
+  // Map adapter to our prefixed auth_* tables — without this it queries
+  // default names ("user", "account") which don't exist in this DB.
+  adapter: DrizzleAdapter(db, {
+    usersTable: users,
+    accountsTable: accounts,
+    verificationTokensTable: verificationTokens,
+  }),
   session: { strategy: "jwt" },
   pages: { signIn: "/sign-in" },
   providers,
