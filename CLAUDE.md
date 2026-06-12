@@ -64,7 +64,9 @@ There are two distinct user records:
 1. **Auth.js Drizzle tables** (`apps/web/src/db/schema.ts`): `auth_users`, `auth_accounts`, `auth_verification_tokens`. Owned by Next.js. Holds OAuth account links + email-verify tokens only.
 2. **FastAPI `users`** (`apps/api/app/models.py`): the real domain user with `role`, `status`, scores, etc. Owned by FastAPI.
 
-They are linked by **email** and by the `backendId` field stashed on the Auth.js JWT. The `signIn` callback in `apps/web/src/lib/auth.ts` POSTs to `/users/upsert`, which creates the FastAPI user as `pending` if new, then mirrors the returned `id` onto the session. Every subsequent BFF call sends that id as `X-User-Id`.
+They are linked by **email** and by the `backendId` field stashed on the Auth.js JWT. The **`jwt` callback** in `apps/web/src/lib/auth.ts` POSTs to `/users/upsert` (when `token.backendId` is missing), which creates the FastAPI user as `pending` if new, then stores the returned `id` on the token. Every subsequent BFF call sends that id as `X-User-Id`.
+
+**Do not stash data on the `user` object in the `signIn` callback.** For OAuth-with-adapter flows, the `user` that `jwt()` receives is the adapter user loaded/created from `auth_users` — a different object — so the mutation is silently lost and every guarded page bounces back to `/sign-in` with no error logged. Credentials (dev login) passes the same object through, which masks the bug locally. The token is the only carrier that survives both flows.
 
 A user signed in via Auth.js is still blocked by FastAPI until an admin flips `status` to `approved` (see `deps.py::current_user`). The Auth.js side has no concept of approval — keep it that way.
 
@@ -190,6 +192,7 @@ Files live on a bind-mounted volume `./data/testcases/` (host) ↔ `/data/testca
 ## Local dev gotchas
 
 - **API code is bind-mounted** (`./apps/api:/app` in compose) so Python edits need only `docker compose restart fastapi` (plain uvicorn, no `--reload`) — no image rebuild. Web code is **not** mounted; Next.js changes need `docker compose build nextjs`.
+- **Rebuilding nextjs invalidates server-action IDs.** Browser tabs loaded before the rebuild silently fail on any form submit (`Failed to find Server Action` in logs, nothing visible in the UI). After every `docker compose build nextjs`, hard-refresh open tabs before testing forms — "button does nothing" is almost always this, not a code bug.
 - **Migrations**: `alembic.ini` has `prepend_sys_path = .`; the script template imports `sqlmodel`; `env.py` sets `include_name` to **skip `auth_*` tables** (Drizzle-owned) so autogenerate never tries to drop them. The Auth.js tables are created out-of-band (see `apps/web/src/db/schema.ts`) — currently by hand / `drizzle-kit`, not Alembic.
 - **Next.js build** reads `DATABASE_URL` at import; `db/client.ts` falls back to a placeholder URL so `next build` can collect page data without a live DB (postgres-js connects lazily). Pages that branch on runtime env (e.g. `/sign-in` on `ENABLE_DEV_LOGIN`) must set `export const dynamic = "force-dynamic"` or the flag is captured at build time.
 - **Dev login**: setting `ENABLE_DEV_LOGIN=true` adds an Auth.js Credentials provider (`id: "dev"`) for instant email-only login on `/sign-in` — local testing without OAuth. Gated by the env flag (the container runs `NODE_ENV=production`, so don't gate on NODE_ENV). Never enable in production.

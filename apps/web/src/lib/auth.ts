@@ -47,21 +47,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   providers,
   callbacks: {
     async signIn({ user }) {
-      // Mirror user to FastAPI. Creates as `pending` if new.
-      if (!user.email) return false;
-      const mirrored = await apiUpsertUser({
-        email: user.email,
-        name: user.name ?? user.email.split("@")[0],
-        image_url: user.image ?? null,
-      });
-      // Stash backend id on the JWT via the user object — next-auth picks it up.
-      (user as { backendId?: string }).backendId = mirrored.id;
-      return true;
+      return Boolean(user.email);
     },
+    // Mirror to FastAPI here, NOT in signIn: for OAuth-with-adapter flows the
+    // `user` object jwt() receives is the adapter user, so anything stashed on
+    // `user` inside signIn() is lost. The token is the only reliable carrier.
     async jwt({ token, user }) {
       if (user) {
-        token.backendId = (user as { backendId?: string }).backendId;
         token.email = user.email ?? token.email;
+        token.name = user.name ?? token.name;
+        token.picture = user.image ?? token.picture;
+      }
+      if (!token.backendId && token.email) {
+        try {
+          const mirrored = await apiUpsertUser({
+            email: token.email,
+            name: token.name ?? token.email.split("@")[0],
+            image_url: token.picture ?? null,
+          });
+          token.backendId = mirrored.id;
+        } catch {
+          // FastAPI unreachable — leave backendId unset; retried on next request.
+        }
       }
       return token;
     },
