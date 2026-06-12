@@ -1,0 +1,40 @@
+[project]
+name = "mygrader-api"
+version = "0.1.0"
+description = "MyGrader FastAPI backend"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi[standard]>=0.118",
+    "uvicorn[standard]>=0.32",
+    "sqlmodel>=0.0.22",
+    "asyncpg>=0.30",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.14",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "redis>=5.2",
+    "httpx>=0.28",
+    "python-multipart>=0.0.20",
+    "pyyaml>=6.0",
+    "structlog>=24.4",
+    "tenacity>=9.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "httpx>=0.28",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "ASYNC"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

@@ -1,0 +1,164 @@
+# MyGrader — all services on one host.
+# Dev: WSL. Prod (later): same file on VPS.
+#
+# Networks:
+#   web      — caddy <-> nextjs <-> fastapi <-> redis/postgres
+#   judge    — fastapi <-> judge0 stack (isolate from web for safety)
+
+name: mygrader
+
+x-judge0-env: &judge0-env
+  REDIS_HOST: judge0-redis
+  REDIS_PORT: 6379
+  POSTGRES_HOST: judge0-postgres
+  POSTGRES_DB: judge0
+  POSTGRES_USER: judge0
+  POSTGRES_PASSWORD: judge0pass
+  AUTHN_HEADER: X-Auth-Token
+  AUTHN_TOKEN: ${JUDGE0_AUTH_TOKEN}
+  CALLBACKS_MAX_TRIES: 3
+  CALLBACKS_TIMEOUT: 5
+  ENABLE_WAIT_RESULT: "false"
+  ENABLE_COMPILER_OPTIONS: "true"
+  ALLOWED_LANGUAGES_FOR_COMPILE_OPTIONS: "C++ (GCC 12.2.0),Python (3.11.2)"
+  MAX_CPU_TIME_LIMIT: 15
+  MAX_WALL_TIME_LIMIT: 20
+  MAX_MEMORY_LIMIT: 512000
+  USE_DOCKER_PRIVILEGED: "true"
+
+services:
+  # ---------- Reverse proxy ----------
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [web]
+    depends_on: [nextjs, fastapi]
+
+  # ---------- Frontend ----------
+  nextjs:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_URL: ${AUTH_URL}
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
+      AUTH_GITHUB_ID: ${AUTH_GITHUB_ID}
+      AUTH_GITHUB_SECRET: ${AUTH_GITHUB_SECRET}
+      AUTH_RESEND_KEY: ${AUTH_RESEND_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      DATABASE_URL: ${DATABASE_URL}
+      API_INTERNAL_URL: ${API_INTERNAL_URL}
+      API_INTERNAL_KEY: ${API_INTERNAL_KEY}
+      ENABLE_DEV_LOGIN: ${ENABLE_DEV_LOGIN:-false}
+    networks: [web]
+    depends_on: [postgres, fastapi]
+
+  # ---------- Backend ----------
+  fastapi:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./data/testcases:/data/testcases
+      - ./data/submissions:/data/submissions
+      - ./apps/api:/app          # dev: live code reload, no rebuild for py edits
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      JUDGE0_URL: ${JUDGE0_URL}
+      JUDGE0_AUTH_TOKEN: ${JUDGE0_AUTH_TOKEN}
+      JUDGE0_CALLBACK_BASE: ${JUDGE0_CALLBACK_BASE}
+      API_INTERNAL_KEY: ${API_INTERNAL_KEY}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS}
+      PYTHON_TIME_MULTIPLIER: ${PYTHON_TIME_MULTIPLIER}
+      SUBMISSION_RATE_LIMIT_PER_10S: ${SUBMISSION_RATE_LIMIT_PER_10S}
+      SUBMISSION_MAX_CONCURRENT: ${SUBMISSION_MAX_CONCURRENT}
+      PYTHONPATH: /app
+    networks: [web, judge]
+    depends_on: [postgres, redis, judge0-server]
+
+  # ---------- App Postgres ----------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - app-postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks: [web]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ---------- App Redis (rate-limit, job state) ----------
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - app-redis-data:/data
+    networks: [web]
+
+  # =====================================================
+  # Judge0 stack (isolated from web network on `judge`)
+  # =====================================================
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    restart: unless-stopped
+    privileged: true
+    environment: *judge0-env
+    networks: [judge]
+    depends_on: [judge0-postgres, judge0-redis]
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    restart: unless-stopped
+    privileged: true
+    command: ["./scripts/workers"]
+    environment: *judge0-env
+    networks: [judge]
+    depends_on: [judge0-postgres, judge0-redis]
+
+  judge0-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0pass
+      POSTGRES_DB: judge0
+    volumes:
+      - judge0-postgres-data:/var/lib/postgresql/data
+    networks: [judge]
+
+  judge0-redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    networks: [judge]
+
+networks:
+  web:
+  judge:
+
+volumes:
+  caddy-data:
+  caddy-config:
+  app-postgres-data:
+  app-redis-data:
+  judge0-postgres-data:

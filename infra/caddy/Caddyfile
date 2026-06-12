@@ -1,0 +1,21 @@
+# MyGrader Caddy reverse proxy.
+#
+# Dev: http://localhost — no TLS.
+# Prod: replace `:80` with your domain. Caddy auto-issues Let's Encrypt cert.
+
+:80 {
+    encode zstd gzip
+
+    # Next.js handles everything by default.
+    reverse_proxy nextjs:3000
+
+    # Optional: expose FastAPI directly for debugging (comment out in prod).
+    # handle_path /api/* {
+    #     reverse_proxy fastapi:8000
+    # }
+
+    log {
+        output stdout
+        format console
+    }
+}

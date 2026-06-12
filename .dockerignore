@@ -1,0 +1,10 @@
+node_modules
+.next
+.venv
+__pycache__
+data/testcases
+data/submissions
+backups
+.git
+.env
+.env.local

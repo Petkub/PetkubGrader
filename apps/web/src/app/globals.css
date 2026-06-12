@@ -1,0 +1,143 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+/* App is dark-only — make `dark:` utilities always apply. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ====== PIXEL-ART / COZY RETRO THEME ====== */
+:root {
+  --bg: 28 26 22;          /* warm charcoal */
+  --bg-2: 20 18 15;
+  --surface: 38 35 29;     /* warm panel */
+  --surface-2: 51 47 40;   /* raised */
+  --border: 74 68 58;      /* warm border */
+  --border-strong: 107 99 86;
+  --fg: 236 229 216;       /* cream */
+  --fg-muted: 179 169 148;
+  --fg-dim: 128 119 102;
+
+  --accent: 245 178 64;    /* amber */
+  --accent-2: 78 201 176;  /* teal */
+  --cyan: 78 201 176;      /* links = teal */
+
+  --ac: 122 199 120;       /* muted green */
+  --wa: 224 108 108;       /* muted red */
+  --tle: 224 166 78;       /* amber */
+  --ce: 201 139 219;       /* muted purple */
+  --ie: 150 142 124;
+
+  --gold: 240 192 96;
+  --silver: 200 192 176;
+  --bronze: 198 130 86;
+
+  --shadow: 16 14 11;      /* hard shadow (deep warm black) */
+}
+
+@theme inline {
+  --color-bg: rgb(var(--bg));
+  --color-surface: rgb(var(--surface));
+  --color-border: rgb(var(--border));
+  --color-fg: rgb(var(--fg));
+  --color-accent: rgb(var(--accent));
+  --color-accent2: rgb(var(--accent-2));
+  --color-cyan: rgb(var(--cyan));
+  --font-sans: var(--font-vt323), ui-monospace, monospace;
+  --font-pixel: var(--font-press), "Press Start 2P", monospace;
+  --font-label: var(--font-silkscreen), var(--font-press), monospace;
+  --font-mono: var(--font-jbmono), ui-monospace, "JetBrains Mono", monospace;
+}
+
+/* Square everything — pixel art has no rounded corners. */
+*, *::before, *::after { border-radius: 0 !important; }
+img, svg { image-rendering: pixelated; }
+
+html, body { height: 100%; }
+/* Bump root rem so EVERY Tailwind text-xs/sm/base utility scales up (pixel fonts read small). */
+html { font-size: 20px; }
+body {
+  background: rgb(var(--bg));
+  background-image:
+    linear-gradient(rgba(245,178,64,0.02) 1px, transparent 1px);
+  background-size: 100% 4px;   /* subtle warm scanlines only */
+  color: rgb(var(--fg));
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: none;
+}
+
+p, li, td, th, label, input, textarea, select, button, a, span, div { letter-spacing: 0.3px; }
+
+h1, h2, h3, .font-pixel {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+}
+
+/* ---- pixel utilities (reuse old class names so pages flip automatically) ---- */
+.text-gradient {                 /* was gradient → now neon green */
+  color: rgb(var(--accent));
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.6);
+  background: none; -webkit-text-fill-color: currentColor;
+}
+.bg-gradient-accent {            /* primary action / brand block */
+  background: rgb(var(--accent-2));
+  color: #0b0b12;
+}
+.bg-gradient-hero {              /* hero panel */
+  background: rgb(var(--surface));
+  border: 3px solid rgb(var(--accent));
+  box-shadow: 6px 6px 0 0 rgb(var(--shadow));
+}
+.surface {
+  background: rgb(var(--surface));
+  border: 3px solid rgb(var(--border));
+  box-shadow: 4px 4px 0 0 rgb(var(--shadow));
+}
+.surface-hover:hover {
+  background: rgb(var(--surface-2));
+  border-color: rgb(var(--accent));
+}
+.glow-accent { border: 3px solid rgb(var(--accent)); box-shadow: 6px 6px 0 0 rgb(var(--shadow)); }
+.ring-cyan:focus-visible { outline: 3px solid rgb(var(--cyan)); outline-offset: 2px; }
+
+/* pixel button press effect */
+.pixel-btn {
+  border: 3px solid #0b0b12;
+  box-shadow: 4px 4px 0 0 rgb(var(--shadow));
+  transition: transform 0.04s, box-shadow 0.04s;
+}
+.pixel-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 rgb(var(--shadow));
+}
+
+.pixel-chip {
+  border: 2px solid currentColor;
+}
+
+/* scrollbar */
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--border-strong)) transparent; }
+*::-webkit-scrollbar { width: 12px; height: 12px; }
+*::-webkit-scrollbar-thumb { background: rgb(var(--border-strong)); }
+*::-webkit-scrollbar-track { background: rgb(var(--bg-2)); }
+
+/* verdict pop */
+@keyframes pop-in {
+  0% { transform: scale(0.7); opacity: 0; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.animate-pop { animation: pop-in 0.3s steps(4, end) both; }
+
+@keyframes blink { 50% { opacity: 0.35; } }
+.blink { animation: blink 1s steps(2, start) infinite; }
+
+/* markdown prose for dark pixel */
+.prose-cp :where(code):not(pre code) {
+  background: rgb(var(--surface-2)); padding: 0.05em 0.3em; font-family: var(--font-mono); font-size: 0.8em;
+}
+.prose-cp :where(pre) {
+  background: #07070c !important; border: 3px solid rgb(var(--border));
+}
+.prose-cp { font-size: 0.95rem; }

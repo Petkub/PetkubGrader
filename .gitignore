@@ -1,0 +1,35 @@
+# Node
+node_modules/
+.next/
+out/
+.turbo/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Data (testcases, submissions, db dumps)
+data/testcases/*
+data/submissions/*
+!data/testcases/.gitkeep
+!data/submissions/.gitkeep
+backups/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+.DS_Store
