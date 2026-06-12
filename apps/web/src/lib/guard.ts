@@ -11,13 +11,27 @@ export async function requireApproved(): Promise<ApiUserStatus> {
   return me;
 }
 
-/** Same gate minus the username step — for /settings itself (avoids a redirect loop). */
+/** Signed-in + not banned. Pending users pass — they may browse but the
+ *  backend blocks submit/register/start (approved-only). Banned → /pending.
+ *  No username yet → /settings. Check `me.status` to gate write UI. */
+export async function requireUser(): Promise<ApiUserStatus> {
+  const session = await auth();
+  if (!session?.user?.backendId) redirect("/sign-in");
+  const me = await getMyStatus().catch(() => null);
+  if (!me) redirect("/sign-in");
+  if (me.status === "banned") redirect("/pending");
+  if (!me.username) redirect("/settings");
+  return me;
+}
+
+/** Same gate minus the username step — for /settings itself (avoids a redirect
+ *  loop). Pending users pass: they need /settings to pick a handle. */
 export async function requireApprovedNoHandleGate(): Promise<ApiUserStatus> {
   const session = await auth();
   if (!session?.user?.backendId) redirect("/sign-in");
   const me = await getMyStatus().catch(() => null);
   if (!me) redirect("/sign-in");
-  if (me.status !== "approved") redirect("/pending");
+  if (me.status === "banned") redirect("/pending");
   return me;
 }
 

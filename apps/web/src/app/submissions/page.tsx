@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireApproved } from "@/lib/guard";
+import { requireUser } from "@/lib/guard";
 import { listMySubmissions } from "@/lib/api";
 import { PageHeader, VerdictBadge, ScoreChip } from "@/components/ui";
 
@@ -10,7 +10,7 @@ export default async function MySubmissionsPage({
 }: {
   searchParams: Promise<{ problem?: string }>;
 }) {
-  await requireApproved();
+  await requireUser();
   const { problem } = await searchParams;
   const rows = await listMySubmissions({ problem, limit: 100 });
 

@@ -5,7 +5,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 
-import { requireApproved } from "@/lib/guard";
+import { requireUser } from "@/lib/guard";
 import { getProblem, submit } from "@/lib/api";
 import { CodeEditor } from "@/components/code-editor";
 import { CopyButton } from "@/components/copy-button";
@@ -16,7 +16,7 @@ export default async function ProblemPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await requireApproved();
+  const me = await requireUser();
 
   const { slug } = await params;
   const problem = await getProblem(slug).catch(() => null);
@@ -100,9 +100,18 @@ export default async function ProblemPage({
       </article>
 
       <aside className="lg:sticky lg:top-20 lg:self-start">
-        <div className="rounded-xl overflow-hidden glow-accent">
-          <CodeEditor onSubmit={handleSubmit} />
-        </div>
+        {me.status === "approved" ? (
+          <div className="rounded-xl overflow-hidden glow-accent">
+            <CodeEditor onSubmit={handleSubmit} />
+          </div>
+        ) : (
+          <div className="surface rounded-xl p-6 text-center space-y-2">
+            <p className="font-pixel text-sm text-amber-500">Account pending approval</p>
+            <p className="text-sm text-[rgb(var(--fg-muted))]">
+              You can read problems, but submitting unlocks once an admin approves your account.
+            </p>
+          </div>
+        )}
       </aside>
     </main>
   );

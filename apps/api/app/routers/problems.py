@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import delete, select
 
 from app.db import get_session
-from app.deps import current_user, require_setter
+from app.deps import current_user_not_banned, require_setter
 from app.models import (
     AuditLog,
     Problem,
@@ -89,7 +89,7 @@ async def list_problems(
     q: str | None = Query(default=None, description="full-text query"),
     topic: list[str] | None = Query(default=None, description="topic slugs, AND-matched"),
     include_drafts: bool = Query(default=False, description="setters/admins only"),
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_not_banned),
     session: AsyncSession = Depends(get_session),
 ) -> list[ProblemSummary]:
     can_see_drafts = user.role in (Role.admin, Role.setter)
@@ -145,7 +145,7 @@ async def list_problems(
 @router.get("/{slug}", response_model=ProblemDetail)
 async def get_problem(
     slug: str,
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_not_banned),
     session: AsyncSession = Depends(get_session),
 ) -> ProblemDetail:
     p = (await session.exec(select(Problem).where(Problem.slug == slug))).first()

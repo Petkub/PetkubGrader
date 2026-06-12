@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.db import get_session
-from app.deps import current_user
+from app.deps import current_user_not_banned
 from app.models import User, UserProblemBest
 
 router = APIRouter(prefix="/ranking", tags=["ranking"])
@@ -27,7 +27,7 @@ class RankRow(BaseModel):
 @router.get("", response_model=list[RankRow])
 async def global_ranking(
     limit: int = Query(default=100, ge=1, le=500),
-    _user: User = Depends(current_user),
+    _user: User = Depends(current_user_not_banned),
     session: AsyncSession = Depends(get_session),
 ) -> list[RankRow]:
     # Aggregate the denormalized best-scores. Order: total desc, earliest full asc.

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireApproved } from "@/lib/guard";
+import { requireUser } from "@/lib/guard";
 import { listProblems, listTopics } from "@/lib/api";
 import { PageHeader, ScoreChip, ProgressBar } from "@/components/ui";
 import { IconCheck, IconPartial, IconEmpty } from "@/components/pixel-icons";
@@ -20,7 +20,7 @@ export default async function ProblemsPage({
 }: {
   searchParams: Promise<{ q?: string; topic?: string | string[] }>;
 }) {
-  await requireApproved();
+  await requireUser();
   const params = await searchParams;
   const selected = Array.isArray(params.topic) ? params.topic : params.topic ? [params.topic] : [];
   const [problems, allTopics] = await Promise.all([

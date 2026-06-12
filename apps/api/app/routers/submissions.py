@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.db import SessionLocal, get_session
-from app.deps import current_user
+from app.deps import current_user, current_user_not_banned
 from app.models import (
     Language,
     Problem,
@@ -146,7 +146,7 @@ async def list_my_submissions(
     problem: str | None = Query(default=None, description="filter by problem slug"),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_not_banned),
     session: AsyncSession = Depends(get_session),
 ) -> list[SubmissionListRow]:
     stmt = (
@@ -199,7 +199,7 @@ async def list_problem_submissions(
     slug: str,
     limit: int = Query(default=100, ge=1, le=300),
     offset: int = Query(default=0, ge=0),
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_not_banned),
     session: AsyncSession = Depends(get_session),
 ) -> ProblemSubmissionsOut:
     """Everyone's submissions for one problem. Source stays gated until the viewer full-scores."""
@@ -243,7 +243,7 @@ async def list_problem_submissions(
 @router.get("/{sub_id}", response_model=SubmissionDetailOut)
 async def get_submission(
     sub_id: UUID,
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_not_banned),
     session: AsyncSession = Depends(get_session),
 ) -> SubmissionDetailOut:
     sub = await session.get(Submission, sub_id)

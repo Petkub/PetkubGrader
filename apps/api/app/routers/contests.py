@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.db import get_session
-from app.deps import current_user, require_setter
+from app.deps import current_user, current_user_not_banned, require_setter
 from app.models import (
     AuditLog,
     Contest,
@@ -69,7 +69,7 @@ class ContestProblemAddIn(BaseModel):
 
 @router.get("", response_model=list[ContestSummary])
 async def list_contests(
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_not_banned),
     session: AsyncSession = Depends(get_session),
 ) -> list[ContestSummary]:
     stmt = select(Contest).order_by(Contest.start_at.desc())
@@ -99,7 +99,7 @@ async def _load(session: AsyncSession, slug: str) -> Contest:
 @router.get("/{slug}", response_model=ContestDetailOut)
 async def get_contest(
     slug: str,
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_not_banned),
     session: AsyncSession = Depends(get_session),
 ) -> ContestDetailOut:
     c = await _load(session, slug)
@@ -189,7 +189,7 @@ class ScoreboardRow(BaseModel):
 @router.get("/{slug}/scoreboard", response_model=list[ScoreboardRow])
 async def scoreboard(
     slug: str,
-    user: User = Depends(current_user),
+    user: User = Depends(current_user_not_banned),
     session: AsyncSession = Depends(get_session),
 ) -> list[ScoreboardRow]:
     c = await _load(session, slug)

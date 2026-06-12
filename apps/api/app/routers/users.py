@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.db import get_session
-from app.deps import current_user, current_user_unverified, require_internal_key
+from app.deps import current_user, current_user_not_banned, current_user_unverified, require_internal_key
 from app.models import Problem, Role, User, UserProblemBest, UserStatus
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -58,7 +58,7 @@ async def upsert_user(payload: UserUpsertIn, session: AsyncSession = Depends(get
 
 
 @router.get("/me", response_model=UserOut)
-async def me(user: User = Depends(current_user)) -> User:
+async def me(user: User = Depends(current_user_not_banned)) -> User:
     return user
 
 
@@ -131,7 +131,7 @@ class ProfileOut(BaseModel):
 @router.get("/by-username/{username}", response_model=ProfileOut)
 async def get_profile(
     username: str,
-    _viewer: User = Depends(current_user),  # approved-only
+    _viewer: User = Depends(current_user_not_banned),  # any signed-in, non-banned viewer
     session: AsyncSession = Depends(get_session),
 ) -> ProfileOut:
     target = (

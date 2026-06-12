@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireApproved } from "@/lib/guard";
+import { requireUser } from "@/lib/guard";
 import { getProfile } from "@/lib/api";
 import { StatCard, SolvedRing, LinkButton, ScoreChip } from "@/components/ui";
 
@@ -11,7 +11,7 @@ export default async function ProfilePage({
 }: {
   params: Promise<{ username: string }>;
 }) {
-  const me = await requireApproved();
+  const me = await requireUser();
   const { username } = await params;
   const profile = await getProfile(username).catch(() => null);
   if (!profile) notFound();

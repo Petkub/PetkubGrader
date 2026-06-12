@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { requireApproved } from "@/lib/guard";
+import { requireUser } from "@/lib/guard";
 import { listContests } from "@/lib/api";
 import { PageHeader, StatusPill } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function ContestsPage() {
-  await requireApproved();
+  await requireUser();
   const contests = await listContests();
 
   return (

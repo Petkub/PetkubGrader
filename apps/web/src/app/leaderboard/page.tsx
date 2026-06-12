@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { requireApproved } from "@/lib/guard";
+import { requireUser } from "@/lib/guard";
 import { getRanking } from "@/lib/api";
 import { PageHeader, RankBadge } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeaderboardPage() {
-  await requireApproved();
+  await requireUser();
   const rows = await getRanking();
 
   return (

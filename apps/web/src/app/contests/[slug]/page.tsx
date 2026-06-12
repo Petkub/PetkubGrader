@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { IconLock } from "@/components/pixel-icons";
-import { requireApproved } from "@/lib/guard";
+import { requireApproved, requireUser } from "@/lib/guard";
 import {
   getContest,
   registerContest,
@@ -22,7 +22,7 @@ export default async function ContestPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const me = await requireApproved();
+  const me = await requireUser();
   const { slug } = await params;
   const c = await getContest(slug).catch(() => null);
   if (!c) notFound();
@@ -95,16 +95,21 @@ export default async function ContestPage({
         </div>
       )}
 
-      {/* Join / start controls */}
+      {/* Join / start controls — approved accounts only */}
       <div className="flex items-center gap-3">
-        {!c.registered && (
+        {me.status !== "approved" && (
+          <span className="text-sm text-amber-500">
+            Account pending approval — you can view contests but not participate yet.
+          </span>
+        )}
+        {me.status === "approved" && !c.registered && (
           <form action={doRegister}>
             <button className="rounded-md bg-zinc-900 text-zinc-50 px-4 py-2 text-sm dark:bg-zinc-50 dark:text-zinc-900">
               Register
             </button>
           </form>
         )}
-        {c.registered && c.mode === "virtual" && !c.started_at && (
+        {me.status === "approved" && c.registered && c.mode === "virtual" && !c.started_at && (
           <form action={doStart}>
             <button className="rounded-md bg-emerald-600 text-white px-4 py-2 text-sm">
               Start now ({c.duration_min} min)

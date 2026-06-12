@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireApproved } from "@/lib/guard";
+import { requireUser } from "@/lib/guard";
 import { getProblem, listProblemSubmissions } from "@/lib/api";
 import { IconLock } from "@/components/pixel-icons";
 
@@ -20,7 +20,7 @@ export default async function ProblemSubmissionsPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await requireApproved();
+  await requireUser();
   const { slug } = await params;
   const [problem, data] = await Promise.all([
     getProblem(slug),

@@ -42,6 +42,15 @@ async def current_user(user: User = Depends(current_user_unverified)) -> User:
     return user
 
 
+async def current_user_not_banned(user: User = Depends(current_user_unverified)) -> User:
+    """Pending users may browse (read-only); only banned are blocked.
+    Use for read endpoints. Anything that mutates (submit, contest
+    register/start) must keep the approved-only `current_user` gate."""
+    if user.status == UserStatus.banned:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "account banned")
+    return user
+
+
 async def require_admin(user: User = Depends(current_user)) -> User:
     if user.role != Role.admin:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "admin only")

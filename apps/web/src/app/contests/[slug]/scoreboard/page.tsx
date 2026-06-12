@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireApproved } from "@/lib/guard";
+import { requireUser } from "@/lib/guard";
 import { getContest, getScoreboard } from "@/lib/api";
 import { RankBadge } from "@/components/ui";
 
@@ -10,7 +10,7 @@ export default async function ScoreboardPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  await requireApproved();
+  await requireUser();
   const { slug } = await params;
   const [c, rows] = await Promise.all([getContest(slug), getScoreboard(slug)]);
   const aliases = c.problems.map((p) => p.alias);

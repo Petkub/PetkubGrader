@@ -1,4 +1,4 @@
-import { requireApproved } from "@/lib/guard";
+import { requireUser } from "@/lib/guard";
 import { getSubmission } from "@/lib/api";
 import { VerdictBadge, VERDICT_TONE } from "@/components/ui";
 import { IconTrophy, IconLock } from "@/components/pixel-icons";
@@ -10,7 +10,7 @@ export default async function SubmissionPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireApproved();
+  await requireUser();
   const { id } = await params;
   const sub = await getSubmission(id);
   const finished = sub.status === "done" || sub.status === "error";
