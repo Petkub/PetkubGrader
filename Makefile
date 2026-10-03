@@ -1,4 +1,4 @@
-.PHONY: help up down logs ps build rebuild migrate migrate-init shell-api shell-db psql seed-topics backup
+.PHONY: help up down logs ps build rebuild migrate migrate-init auth-tables setup-db restore shell-api shell-db psql seed-topics backup
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -28,6 +28,11 @@ migrate-init: ## Autogenerate first table migration from models (run after first
 migrate: ## Apply alembic migrations
 	docker compose run --rm fastapi alembic upgrade head
 
+auth-tables: ## Create Auth.js auth_* tables (idempotent; auto on first DB init)
+	docker compose exec -T postgres psql -U $${POSTGRES_USER:-mygrader} -d $${POSTGRES_DB:-mygrader} < infra/postgres/init/02-auth-tables.sql
+
+setup-db: migrate auth-tables seed-topics ## First-time DB setup on a fresh server (after `make up`)
+
 shell-api: ## Bash inside fastapi container
 	docker compose exec fastapi /bin/bash
 
@@ -53,6 +58,12 @@ seed-topics: ## Seed common CP topic tags
 
 backup: ## Dump app DB + tar testcases to ./backups/
 	@mkdir -p backups
-	docker compose exec -T postgres pg_dump -U $${POSTGRES_USER:-mygrader} $${POSTGRES_DB:-mygrader} | gzip > backups/db-$$(date +%Y%m%d-%H%M).sql.gz
+	docker compose exec -T postgres pg_dump --clean --if-exists -U $${POSTGRES_USER:-mygrader} $${POSTGRES_DB:-mygrader} | gzip > backups/db-$$(date +%Y%m%d-%H%M).sql.gz
 	tar -czf backups/testcases-$$(date +%Y%m%d-%H%M).tar.gz data/testcases
 	@echo "Backed up to ./backups/"
+
+restore: ## Restore a backup: make restore DB=backups/db-X.sql.gz [TC=backups/testcases-X.tar.gz]
+	@test -n "$(DB)" || (echo "usage: make restore DB=backups/db-X.sql.gz [TC=backups/testcases-X.tar.gz]" && exit 1)
+	gunzip -c $(DB) | docker compose exec -T postgres psql -q -v ON_ERROR_STOP=1 -U $${POSTGRES_USER:-mygrader} -d $${POSTGRES_DB:-mygrader}
+	@if [ -n "$(TC)" ]; then tar -xzf $(TC); fi
+	@echo "Restored. Run: docker compose restart fastapi"

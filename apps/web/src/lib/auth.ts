@@ -11,11 +11,22 @@ import { apiUpsertUser } from "@/lib/api";
 
 export const DEV_LOGIN_ENABLED = process.env.ENABLE_DEV_LOGIN === "true";
 
-const providers: Provider[] = [
-  Google({ clientId: process.env.AUTH_GOOGLE_ID!, clientSecret: process.env.AUTH_GOOGLE_SECRET! }),
-  GitHub({ clientId: process.env.AUTH_GITHUB_ID!, clientSecret: process.env.AUTH_GITHUB_SECRET! }),
-  Resend({ apiKey: process.env.AUTH_RESEND_KEY!, from: process.env.EMAIL_FROM! }),
-];
+// Only register providers whose credentials are configured, so a deployment
+// with just Google set up doesn't show broken GitHub / magic-link buttons.
+export const GOOGLE_ENABLED = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
+export const GITHUB_ENABLED = Boolean(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET);
+export const EMAIL_ENABLED = Boolean(process.env.AUTH_RESEND_KEY);
+
+const providers: Provider[] = [];
+if (GOOGLE_ENABLED) {
+  providers.push(Google({ clientId: process.env.AUTH_GOOGLE_ID!, clientSecret: process.env.AUTH_GOOGLE_SECRET! }));
+}
+if (GITHUB_ENABLED) {
+  providers.push(GitHub({ clientId: process.env.AUTH_GITHUB_ID!, clientSecret: process.env.AUTH_GITHUB_SECRET! }));
+}
+if (EMAIL_ENABLED) {
+  providers.push(Resend({ apiKey: process.env.AUTH_RESEND_KEY!, from: process.env.EMAIL_FROM! }));
+}
 
 if (DEV_LOGIN_ENABLED) {
   // DEV ONLY — instant login by email, no password. Gated by ENABLE_DEV_LOGIN.

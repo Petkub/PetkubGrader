@@ -1,7 +1,18 @@
 # MyGrader Caddy reverse proxy.
 #
-# Dev: http://localhost — no TLS.
-# Prod: replace `:80` with your domain. Caddy auto-issues Let's Encrypt cert.
+# Served on plain :80. Two ways to put it on the internet:
+#   - Cloudflare Tunnel (docs/DEPLOY-TH.md): cloudflared terminates TLS and
+#     forwards to caddy:80 — keep `:80` as is.
+#   - Public VPS: replace `:80` with your domain. Caddy auto-issues a
+#     Let's Encrypt cert.
+
+{
+    servers {
+        # Trust X-Forwarded-* from cloudflared / LAN proxies so Next.js sees
+        # the original https scheme and host.
+        trusted_proxies static private_ranges
+    }
+}
 
 :80 {
     encode zstd gzip

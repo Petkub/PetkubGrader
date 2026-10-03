@@ -14,12 +14,14 @@ make rebuild        # build --no-cache
 make logs           # tail all services
 make ps             # status
 
-make migrate-init   # run ONCE after first up: alembic autogenerate tables from app/models.py
+make setup-db       # fresh install, after first up: migrate + auth-tables + seed-topics
 make migrate        # alembic upgrade head
+make auth-tables    # create Auth.js auth_* tables (idempotent; also auto-run on first DB init)
 make seed-topics    # insert default CP topic tags
 make shell-api      # bash in fastapi container
 make shell-db       # psql in app postgres
-make backup         # pg_dump + tar testcases to ./backups/
+make backup         # pg_dump --clean + tar testcases to ./backups/
+make restore DB=backups/db-X.sql.gz TC=backups/testcases-X.tar.gz
 ```
 
 After the schema lands, bootstrap the first admin manually:
@@ -161,6 +163,10 @@ The UI is **dark-only, pixel-art themed**. Cohesion comes from a token + shared-
 - **Shared components** (`components/ui.tsx`): `Button`/`LinkButton`, `Card`, `PageHeader`, `RankBadge` (gold/silver/bronze medals), `ScoreChip`, `ProgressBar` (segmented blocks), `VerdictBadge` + `VERDICT_TONE`, `StatCard`, `SolvedRing`, `StatusPill`, `Topic`. Use these instead of bespoke markup so the look stays consistent.
 - **Pixel icons** (`components/pixel-icons.tsx`): no emoji anywhere. Icons are SVG grids (`Pixels` renders `<rect>` per filled cell, `shapeRendering=crispEdges`). **Grid strings use `1`/`#` for filled, `0`/`.` for empty** — the renderer matches `"1" || "#"`. Color via `currentColor` (pass a `text-[...]` className). Icons: `IconCheck/IconPartial/IconEmpty` (problem status), `IconStar`, `IconLock`, `IconTrophy`, `IconCross`, `IconHourglass`.
 
+**Sign-in providers are env-gated**: `lib/auth.ts` registers Google / GitHub / Resend only when their env vars are set (`GOOGLE_ENABLED` etc.), and `/sign-in` shows only those buttons.
+
+**Production deploy** (Thai, `docs/DEPLOY-TH.md`): own machine + Cloudflare Tunnel. The optional `cloudflared` compose service (profile `tunnel`, enabled via `COMPOSE_PROFILES=tunnel` + `CLOUDFLARE_TUNNEL_TOKEN` in `.env`) forwards the public hostname to `caddy:80`; Caddy stays plain HTTP with `trusted_proxies static private_ranges` so forwarded https headers survive. `apps/web/public/` must exist (Dockerfile copies it) — keep the `.gitkeep`.
+
 Web code is **not bind-mounted** — any frontend change needs `docker compose build nextjs && docker compose up -d nextjs caddy` (the `caddy` recreate matters: bringing up only `nextjs` can leave `caddy` stopped).
 
 ### Live verdicts = polling, by design (v1)
@@ -193,7 +199,7 @@ Files live on a bind-mounted volume `./data/testcases/` (host) ↔ `/data/testca
 
 - **API code is bind-mounted** (`./apps/api:/app` in compose) so Python edits need only `docker compose restart fastapi` (plain uvicorn, no `--reload`) — no image rebuild. Web code is **not** mounted; Next.js changes need `docker compose build nextjs`.
 - **Rebuilding nextjs invalidates server-action IDs.** Browser tabs loaded before the rebuild silently fail on any form submit (`Failed to find Server Action` in logs, nothing visible in the UI). After every `docker compose build nextjs`, hard-refresh open tabs before testing forms — "button does nothing" is almost always this, not a code bug.
-- **Migrations**: `alembic.ini` has `prepend_sys_path = .`; the script template imports `sqlmodel`; `env.py` sets `include_name` to **skip `auth_*` tables** (Drizzle-owned) so autogenerate never tries to drop them. The Auth.js tables are created out-of-band (see `apps/web/src/db/schema.ts`) — currently by hand / `drizzle-kit`, not Alembic.
+- **Migrations**: `alembic.ini` has `prepend_sys_path = .`; the script template imports `sqlmodel`; `env.py` sets `include_name` to **skip `auth_*` tables** (Drizzle-owned) so autogenerate never tries to drop them. The Auth.js tables are created by `infra/postgres/init/02-auth-tables.sql` (auto on first DB init, or `make auth-tables`) — keep it in sync with `apps/web/src/db/schema.ts`.
 - **Next.js build** reads `DATABASE_URL` at import; `db/client.ts` falls back to a placeholder URL so `next build` can collect page data without a live DB (postgres-js connects lazily). Pages that branch on runtime env (e.g. `/sign-in` on `ENABLE_DEV_LOGIN`) must set `export const dynamic = "force-dynamic"` or the flag is captured at build time.
 - **Dev login**: setting `ENABLE_DEV_LOGIN=true` adds an Auth.js Credentials provider (`id: "dev"`) for instant email-only login on `/sign-in` — local testing without OAuth. Gated by the env flag (the container runs `NODE_ENV=production`, so don't gate on NODE_ENV). Never enable in production.
 - **Author CMS** lives under `/manage` (role-gated by `lib/guard.ts::requireSetter`). Publish is `POST /problems/{slug}/publish` (validates subtasks sum to 100, each non-empty). ZIP upload from the browser goes through the Next.js route handler `app/api/manage/problems/[slug]/testcases/route.ts`, which forwards multipart to FastAPI — the only multipart BFF path (the JSON `lib/api.ts` helpers can't carry files).

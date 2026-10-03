@@ -33,6 +33,12 @@ internet ───────►│ Caddy :80/:443 (auto-HTTPS)     │
                        data/testcases/ (volume)
 ```
 
+## Deploy (Thai guide)
+
+Step-by-step production setup on your own machine + domain + Cloudflare Tunnel
+(~500 THB/year): **[docs/DEPLOY-TH.md](docs/DEPLOY-TH.md)**. A sample problem
+package lives in [`examples/aplusb/`](examples/aplusb/).
+
 ## Quickstart (dev on WSL)
 
 ```bash
@@ -49,10 +55,7 @@ openssl rand -hex 32      # paste twice into .env
 
 make build
 make up
-make migrate-init   # autogenerate tables migration
-# review apps/api/alembic/versions/*tables* before applying
-make migrate
-make seed-topics
+make setup-db       # alembic upgrade + Auth.js tables + topic tags
 
 open http://localhost
 ```
@@ -132,8 +135,8 @@ subtasks:
 ## Backups (prod)
 
 ```bash
-make backup
-# Then push backups/ to Backblaze B2 via restic (set up cron)
+make backup                                    # pg_dump --clean + testcases tar
+make restore DB=backups/db-X.sql.gz TC=backups/testcases-X.tar.gz
 ```
 
 ## Roadmap
@@ -144,4 +147,4 @@ make backup
 - [ ] Contest scoreboard (live + virtual)
 - [ ] Per-testcase live verdicts (polling v1, SSE later)
 - [ ] Custom testlib checker (v2)
-- [ ] Domain + TLS (when ready)
+- [x] Domain + TLS (Cloudflare Tunnel, see docs/DEPLOY-TH.md)

@@ -1,0 +1,14 @@
+time_ms: 1000
+memory_mb: 256
+scoring_mode: ioi_strict
+samples:
+  - in: "1 2\n"
+    out: "3\n"
+    explanation: "1 + 2 = 3"
+subtasks:
+  - name: "small"
+    weight: 40
+    tests: [1, 2]
+  - name: "big numbers"
+    weight: 60
+    tests: [3]
